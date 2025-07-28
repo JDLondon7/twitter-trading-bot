@@ -32,7 +32,7 @@ class UltimateFreeAgent {
         this.performanceMetrics = {};
         this.optimalTiming = {};
         this.dailyPostCount = 0;
-        this.maxDailyPosts = 15; // Increased for threads
+        this.maxDailyPosts = 10; // Reduced to stay under Twitter limits
         this.testMode = process.env.NODE_ENV === 'test' || process.env.TEST_MODE === 'true'; // Test mode flag
 
         // Enhanced database
@@ -1147,12 +1147,11 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
         // Schedule posts throughout the day - AVOIDING trading sessions
         // London session: 8:00-9:30 AM GMT (3:00-4:30 AM EST winter / 4:00-5:30 AM EST summer)
         // NY session: 2:30-4:00 PM GMT (9:30-11:00 AM EST winter / 10:30 AM-12:00 PM EST summer)
+        // Reduced schedule to stay under Twitter rate limits (10 posts/day = 300/month)
         const postingSchedule = [
-            '0 6 * * *',   // 6:00 AM EST - Pre-market analysis (after London session)
-            '30 6 * * *',  // 6:30 AM EST - Economic preview
+            '0 6 * * *',   // 6:00 AM EST - Pre-market analysis
             '0 7 * * *',   // 7:00 AM EST - Market structure
-            '0 8 * * *',   // 8:00 AM EST - Morning insight (before NY session)
-            '30 8 * * *',  // 8:30 AM EST - Educational content
+            '0 8 * * *',   // 8:00 AM EST - Morning insight
             '30 11 * * *', // 11:30 AM EST - Mid-day insight (after NY session)
             '30 12 * * *', // 12:30 PM EST - Lunch educational
             '45 13 * * *', // 1:45 PM EST - Afternoon perspective
@@ -1183,7 +1182,7 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
                     return;
                 }
                 
-                console.log(`⏰ Scheduled post ${index + 1}/12 triggered at ${now.toLocaleString('en-US', { timeZone: 'America/New_York' })} EST`);
+                console.log(`⏰ Scheduled post ${index + 1}/10 triggered at ${now.toLocaleString('en-US', { timeZone: 'America/New_York' })} EST`);
                 console.log(`📊 GMT time: ${gmtTime.toFixed(1)} - Outside trading sessions ✅`);
                 this.postUltimateContent();
             }, {
