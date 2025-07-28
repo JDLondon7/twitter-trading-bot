@@ -8,6 +8,9 @@ const path = require('path');
 
 class UltimateFreeAgent {
     constructor() {
+        // Critical Bug Fix: Environment Variable Validation
+        this.validateEnvironmentVariables();
+        
         // Initialize APIs
         this.twitter = new TwitterApi({
             appKey: process.env.TWITTER_API_KEY,
@@ -1032,8 +1035,14 @@ Create educational content focused on trading psychology and professional develo
             // Store with full analytics
             await this.storeUltimateTweet(tweetData);
             
+            // Critical Bug Fix: Validate content before posting
+            const validatedContent = this.validateTweetContent(tweetData.content);
+            
             // Post to Twitter
-            const tweet = await this.twitter.v2.tweet({ text: tweetData.content });
+            const tweet = await this.twitter.v2.tweet({ text: validatedContent });
+            
+            // Update tweetData with validated content
+            tweetData.content = validatedContent;
             await this.storeUltimateTweet(tweetData, tweet.data.id);
             
             this.dailyPostCount++;
@@ -1159,8 +1168,60 @@ Create educational content focused on trading psychology and professional develo
         });
     }
 
+    // Critical Bug Fix: Environment Variable Validation
+    validateEnvironmentVariables() {
+        const required = [
+            'TWITTER_API_KEY',
+            'TWITTER_API_SECRET', 
+            'TWITTER_ACCESS_TOKEN',
+            'TWITTER_ACCESS_TOKEN_SECRET',
+            'GOOGLE_AI_API_KEY'
+        ];
+        
+        const missing = required.filter(key => !process.env[key]);
+        
+        if (missing.length > 0) {
+            throw new Error(`❌ Missing required environment variables: ${missing.join(', ')}`);
+        }
+        
+        console.log('✅ All environment variables validated');
+    }
+
+    // Critical Bug Fix: Content Validation
+    validateTweetContent(content) {
+        if (!content || typeof content !== 'string') {
+            throw new Error('Invalid content: must be a non-empty string');
+        }
+        
+        // Twitter's limit is 280 characters
+        if (content.length > 280) {
+            console.warn(`⚠️ Content too long (${content.length} chars), truncating...`);
+            return content.substring(0, 277) + '...';
+        }
+        
+        // Remove potential harmful characters
+        const sanitized = content.replace(/[\u0000-\u001f\u007f-\u009f]/g, '');
+        
+        return sanitized;
+    }
+
+    // Critical Bug Fix: Proper Database Close
     close() {
-        this.db.close();
+        return new Promise((resolve, reject) => {
+            if (this.db) {
+                this.db.close((err) => {
+                    if (err) {
+                        console.error('❌ Database close error:', err.message);
+                        reject(err);
+                    } else {
+                        console.log('✅ Database connection closed');
+                        resolve();
+                    }
+                });
+            } else {
+                resolve();
+            }
+        });
     }
 }
 
