@@ -33,6 +33,8 @@ class UltimateFreeAgent {
         this.optimalTiming = {};
         this.dailyPostCount = 0;
         this.maxDailyPosts = 15; // Increased for threads
+        this.lastPostTime = 0; // Track last post timestamp
+        this.minPostInterval = 30 * 60 * 1000; // 30 minutes between posts
 
         // Enhanced database
         this.dbPath = path.join(__dirname, 'ultimate_free_agent.db');
@@ -807,8 +809,36 @@ Return ONLY the 8 tweets, numbered 1/8 through 8/8, separated by "---"`;
         const response = await result.response;
         let content = response.text().trim().replace(/^["']|["']$/g, '');
         
+        // Improved character limit handling with better truncation
         if (content.length > 280) {
-            content = content.substring(0, 277) + '...';
+            console.log(`⚠️ Content too long (${content.length} chars), intelligently truncating...`);
+            
+            // Find last complete sentence within reasonable limit
+            const truncated = content.substring(0, 270);
+            let cutPoint = truncated.lastIndexOf('.');
+            
+            // If no sentence end, try other punctuation
+            if (cutPoint < 200) {
+                cutPoint = Math.max(
+                    truncated.lastIndexOf('!'),
+                    truncated.lastIndexOf('?'),
+                    truncated.lastIndexOf(':')
+                );
+            }
+            
+            // If still no good break, find last space
+            if (cutPoint < 200) {
+                cutPoint = truncated.lastIndexOf(' ');
+            }
+            
+            // Apply cut
+            if (cutPoint > 150) {
+                content = content.substring(0, cutPoint + 1);
+            } else {
+                content = content.substring(0, 270) + '...';
+            }
+            
+            console.log(`📏 Truncated to ${content.length} characters`);
         }
         
         return {
@@ -927,12 +957,16 @@ Provide deep, actionable wisdom that separates professional traders from amateur
 
 Use NQ and GC as separate market examples to illustrate your wisdom. The market data supports your teaching, doesn't drive it.
 
-Be the mentor figure who shares hard-earned wisdom.`;
+Be the mentor figure who shares hard-earned wisdom.
+
+CRITICAL: Keep response under 250 characters to ensure it fits within Twitter's 280 character limit after formatting.`;
 
             default:
                 return `${basePrompt}
 
-Create educational content focused on trading psychology and professional development. Use market context to support your teaching.`;
+Create educational content focused on trading psychology and professional development. Use market context to support your teaching.
+
+CRITICAL: Keep response under 250 characters to ensure it fits within Twitter's 280 character limit after formatting.`;
         }
     }
 
@@ -1009,7 +1043,21 @@ Create educational content focused on trading psychology and professional develo
     // FREE: Main ultimate posting function
     async postUltimateContent() {
         try {
-            if (this.dailyPostCount >= this.maxDailyPosts) return;
+            // Check daily post limit
+            if (this.dailyPostCount >= this.maxDailyPosts) {
+                console.log('📊 Daily post limit reached');
+                return;
+            }
+
+            // Check minimum time interval between posts
+            const now = Date.now();
+            const timeSinceLastPost = now - this.lastPostTime;
+            
+            if (this.lastPostTime > 0 && timeSinceLastPost < this.minPostInterval) {
+                const remainingTime = Math.ceil((this.minPostInterval - timeSinceLastPost) / 60000);
+                console.log(`⏳ Waiting ${remainingTime} minutes before next post (rate limiting)`);
+                return;
+            }
 
             // Gather comprehensive intelligence
             await this.fetchComprehensiveEconomicData();
@@ -1046,6 +1094,7 @@ Create educational content focused on trading psychology and professional develo
             await this.storeUltimateTweet(tweetData, tweet.data.id);
             
             this.dailyPostCount++;
+            this.lastPostTime = Date.now(); // Update last post time
             
         } catch (error) {
             console.error('❌ Ultimate posting error:', error.message);
@@ -1100,12 +1149,45 @@ Create educational content focused on trading psychology and professional develo
         // Reset daily counters at midnight
         cron.schedule('0 0 * * *', () => {
             this.dailyPostCount = 0;
+            this.lastPostTime = 0; // Reset timing controls
             console.log('🔄 Daily reset - Ready for new day of ultimate content');
         });
 
-        // Post first content immediately
-        console.log('🧪 Posting initial ultimate content...');
-        this.postUltimateContent();
+        // Check if we should post initial content (only if no recent posts)
+        console.log('🧪 Checking if initial post is needed...');
+        this.checkInitialPost();
+    }
+
+    // Check if initial post should be made (avoid spam on restart)
+    async checkInitialPost() {
+        try {
+            // Query database for recent posts (within last 30 minutes)
+            const recentPostQuery = `
+                SELECT timestamp FROM ultimate_posts 
+                WHERE datetime(timestamp) > datetime('now', '-30 minutes')
+                ORDER BY timestamp DESC
+                LIMIT 1
+            `;
+            
+            this.db.get(recentPostQuery, [], (err, row) => {
+                if (err) {
+                    console.error('Database query error:', err);
+                    return;
+                }
+                
+                if (row) {
+                    console.log('⏳ Recent post found - skipping initial post to avoid spam');
+                    const postTime = new Date(row.timestamp);
+                    console.log(`   Last post: ${postTime.toLocaleString()}`);
+                } else {
+                    console.log('✅ No recent posts found - posting initial content');
+                    this.postUltimateContent();
+                }
+            });
+        } catch (error) {
+            console.error('Initial post check error:', error);
+            // If there's an error, don't post to be safe
+        }
     }
 
     // Test the ultimate agent
@@ -1193,10 +1275,21 @@ Create educational content focused on trading psychology and professional develo
             throw new Error('Invalid content: must be a non-empty string');
         }
         
-        // Twitter's limit is 280 characters
+        // Twitter's limit is 280 characters - be more aggressive with truncation
         if (content.length > 280) {
             console.warn(`⚠️ Content too long (${content.length} chars), truncating...`);
-            return content.substring(0, 277) + '...';
+            // Find last complete sentence within limit
+            const truncated = content.substring(0, 270);
+            const lastSentence = truncated.lastIndexOf('.');
+            const lastSpace = truncated.lastIndexOf(' ');
+            
+            if (lastSentence > 200) {
+                return content.substring(0, lastSentence + 1);
+            } else if (lastSpace > 200) {
+                return content.substring(0, lastSpace) + '...';
+            } else {
+                return content.substring(0, 270) + '...';
+            }
         }
         
         // Remove potential harmful characters
