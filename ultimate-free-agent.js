@@ -1158,9 +1158,8 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
             '45 13 * * *', // 1:45 PM EST - Afternoon perspective
             '30 15 * * *', // 3:30 PM EST - Market wrap-up
             '15 17 * * *', // 5:15 PM EST - After hours analysis
-            '0 19 * * *',  // 7:00 PM EST - Evening thread
-            '30 20 * * *', // 8:30 PM EST - Psychology insight
-            '0 21 * * *'   // 9:00 PM EST - Tomorrow prep
+            '0 18 * * *',  // 6:00 PM EST - Evening thread
+            '30 20 * * *'  // 8:30 PM EST - Psychology insight
         ];
 
         postingSchedule.forEach((cronTime, index) => {
@@ -1184,7 +1183,7 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
                     return;
                 }
                 
-                console.log(`⏰ Scheduled post ${index + 1}/13 triggered at ${now.toLocaleString('en-US', { timeZone: 'America/New_York' })} EST`);
+                console.log(`⏰ Scheduled post ${index + 1}/12 triggered at ${now.toLocaleString('en-US', { timeZone: 'America/New_York' })} EST`);
                 console.log(`📊 GMT time: ${gmtTime.toFixed(1)} - Outside trading sessions ✅`);
                 this.postUltimateContent();
             }, {
