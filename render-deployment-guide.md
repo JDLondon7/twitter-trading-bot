@@ -118,13 +118,15 @@ LOG_LEVEL=info
 
 **Solution**: Your bot's cron schedule automatically wakes it up when it needs to post!
 
-Your `ultimate-free-agent.js` has a complete posting schedule in EST timezone:
+Your `ultimate-free-agent.js` has a complete posting schedule with trading session protection:
 ```javascript
-// 12 scheduled posts throughout the day (EST timezone)
+// 13 scheduled posts throughout the day (EST timezone)
+// Automatically blocks posts during your trading sessions:
+// - London session: 8:00-9:30 AM GMT 
+// - NY session: 2:30-4:00 PM GMT
 '0 6 * * *',   // 6:00 AM EST - Pre-market analysis
 '30 6 * * *',  // 6:30 AM EST - Economic preview
-'0 7 * * *',   // 7:00 AM EST - Market structure
-// ... and 9 more scheduled times through 9:00 PM EST
+// ... and 11 more scheduled times with session protection
 ```
 
 ## Step 6: Update Your Bot Anytime

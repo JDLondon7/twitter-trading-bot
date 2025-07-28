@@ -1144,16 +1144,19 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
         console.log('  - Professional market commentary');
         console.log('  - 5-10x engagement improvement\n');
 
-        // Schedule posts throughout the day with optimal timing (EST timezone)
+        // Schedule posts throughout the day - AVOIDING trading sessions
+        // London session: 8:00-9:30 AM GMT (3:00-4:30 AM EST winter / 4:00-5:30 AM EST summer)
+        // NY session: 2:30-4:00 PM GMT (9:30-11:00 AM EST winter / 10:30 AM-12:00 PM EST summer)
         const postingSchedule = [
-            '0 6 * * *',   // 6:00 AM EST - Pre-market analysis
+            '0 6 * * *',   // 6:00 AM EST - Pre-market analysis (after London session)
             '30 6 * * *',  // 6:30 AM EST - Economic preview
             '0 7 * * *',   // 7:00 AM EST - Market structure
-            '30 9 * * *',  // 9:30 AM EST - Open commentary
-            '15 11 * * *', // 11:15 AM EST - Mid-morning insight
+            '0 8 * * *',   // 8:00 AM EST - Morning insight (before NY session)
+            '30 8 * * *',  // 8:30 AM EST - Educational content
+            '30 11 * * *', // 11:30 AM EST - Mid-day insight (after NY session)
             '30 12 * * *', // 12:30 PM EST - Lunch educational
             '45 13 * * *', // 1:45 PM EST - Afternoon perspective
-            '30 15 * * *', // 3:30 PM EST - Close preparation
+            '30 15 * * *', // 3:30 PM EST - Market wrap-up
             '15 17 * * *', // 5:15 PM EST - After hours analysis
             '0 19 * * *',  // 7:00 PM EST - Evening thread
             '30 20 * * *', // 8:30 PM EST - Psychology insight
@@ -1162,7 +1165,27 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
 
         postingSchedule.forEach((cronTime, index) => {
             cron.schedule(cronTime, () => {
-                console.log(`⏰ Scheduled post ${index + 1}/12 triggered at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} EST`);
+                const now = new Date();
+                const gmtHour = now.getUTCHours();
+                const gmtMinute = now.getUTCMinutes();
+                const gmtTime = gmtHour + (gmtMinute / 60);
+                
+                // Check if we're in a trading session (GMT times)
+                const inLondonSession = gmtTime >= 8.0 && gmtTime < 9.5;  // 8:00-9:30 GMT
+                const inNYSession = gmtTime >= 14.5 && gmtTime < 16.0;     // 14:30-16:00 GMT
+                
+                if (inLondonSession) {
+                    console.log(`🚫 Skipping post - London trading session active (${gmtTime.toFixed(1)} GMT)`);
+                    return;
+                }
+                
+                if (inNYSession) {
+                    console.log(`🚫 Skipping post - NY trading session active (${gmtTime.toFixed(1)} GMT)`);
+                    return;
+                }
+                
+                console.log(`⏰ Scheduled post ${index + 1}/13 triggered at ${now.toLocaleString('en-US', { timeZone: 'America/New_York' })} EST`);
+                console.log(`📊 GMT time: ${gmtTime.toFixed(1)} - Outside trading sessions ✅`);
                 this.postUltimateContent();
             }, {
                 timezone: 'America/New_York'
