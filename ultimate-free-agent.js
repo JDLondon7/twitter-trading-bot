@@ -1144,33 +1144,37 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
         console.log('  - Professional market commentary');
         console.log('  - 5-10x engagement improvement\n');
 
-        // Schedule posts throughout the day with optimal timing
+        // Schedule posts throughout the day with optimal timing (EST timezone)
         const postingSchedule = [
-            '0 6 * * *',   // 6:00 AM - Pre-market analysis
-            '30 6 * * *',  // 6:30 AM - Economic preview
-            '0 7 * * *',   // 7:00 AM - Market structure
-            '30 9 * * *',  // 9:30 AM - Open commentary
-            '15 11 * * *', // 11:15 AM - Mid-morning insight
-            '30 12 * * *', // 12:30 PM - Lunch educational
-            '45 13 * * *', // 1:45 PM - Afternoon perspective
-            '30 15 * * *', // 3:30 PM - Close preparation
-            '15 17 * * *', // 5:15 PM - After hours analysis
-            '0 19 * * *',  // 7:00 PM - Evening thread
-            '30 20 * * *', // 8:30 PM - Psychology insight
-            '0 21 * * *'   // 9:00 PM - Tomorrow prep
+            '0 6 * * *',   // 6:00 AM EST - Pre-market analysis
+            '30 6 * * *',  // 6:30 AM EST - Economic preview
+            '0 7 * * *',   // 7:00 AM EST - Market structure
+            '30 9 * * *',  // 9:30 AM EST - Open commentary
+            '15 11 * * *', // 11:15 AM EST - Mid-morning insight
+            '30 12 * * *', // 12:30 PM EST - Lunch educational
+            '45 13 * * *', // 1:45 PM EST - Afternoon perspective
+            '30 15 * * *', // 3:30 PM EST - Close preparation
+            '15 17 * * *', // 5:15 PM EST - After hours analysis
+            '0 19 * * *',  // 7:00 PM EST - Evening thread
+            '30 20 * * *', // 8:30 PM EST - Psychology insight
+            '0 21 * * *'   // 9:00 PM EST - Tomorrow prep
         ];
 
         postingSchedule.forEach((cronTime, index) => {
             cron.schedule(cronTime, () => {
-                console.log(`⏰ Scheduled post ${index + 1}/12 triggered`);
+                console.log(`⏰ Scheduled post ${index + 1}/12 triggered at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} EST`);
                 this.postUltimateContent();
+            }, {
+                timezone: 'America/New_York'
             });
         });
 
-        // Reset daily counters at midnight
+        // Reset daily counters at midnight EST
         cron.schedule('0 0 * * *', () => {
             this.dailyPostCount = 0;
-            console.log('🔄 Daily reset - Ready for new day of ultimate content');
+            console.log(`🔄 Daily reset at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} EST - Ready for new day of ultimate content`);
+        }, {
+            timezone: 'America/New_York'
         });
 
         // Check if we should post initial content (only if no recent posts)

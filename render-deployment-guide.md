@@ -118,12 +118,13 @@ LOG_LEVEL=info
 
 **Solution**: Your bot's cron schedule automatically wakes it up when it needs to post!
 
-Your `ultimate-free-agent.js` likely has something like:
+Your `ultimate-free-agent.js` has a complete posting schedule in EST timezone:
 ```javascript
-// Posts every few hours - this wakes up the service
-cron.schedule('0 */3 * * *', async () => {
-    await this.postUltimateContent();
-});
+// 12 scheduled posts throughout the day (EST timezone)
+'0 6 * * *',   // 6:00 AM EST - Pre-market analysis
+'30 6 * * *',  // 6:30 AM EST - Economic preview
+'0 7 * * *',   // 7:00 AM EST - Market structure
+// ... and 9 more scheduled times through 9:00 PM EST
 ```
 
 ## Step 6: Update Your Bot Anytime
