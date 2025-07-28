@@ -33,8 +33,6 @@ class UltimateFreeAgent {
         this.optimalTiming = {};
         this.dailyPostCount = 0;
         this.maxDailyPosts = 15; // Increased for threads
-        this.lastPostTime = 0; // Track last post timestamp
-        this.minPostInterval = 30 * 60 * 1000; // 30 minutes between posts
         this.testMode = process.env.NODE_ENV === 'test' || process.env.TEST_MODE === 'true'; // Test mode flag
 
         // Enhanced database
@@ -1035,16 +1033,6 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
                 return;
             }
 
-            // Check minimum time interval between posts
-            const now = Date.now();
-            const timeSinceLastPost = now - this.lastPostTime;
-            
-            if (this.lastPostTime > 0 && timeSinceLastPost < this.minPostInterval) {
-                const remainingTime = Math.ceil((this.minPostInterval - timeSinceLastPost) / 60000);
-                console.log(`⏳ Waiting ${remainingTime} minutes before next post (rate limiting)`);
-                return;
-            }
-
             // Gather comprehensive intelligence
             await this.fetchComprehensiveEconomicData();
             await this.analyzeAdvancedSocialSentiment();
@@ -1094,7 +1082,6 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
             }
             
             this.dailyPostCount++;
-            this.lastPostTime = Date.now(); // Update last post time
             
         } catch (error) {
             console.error('❌ Ultimate posting error:', error.message);
@@ -1183,7 +1170,6 @@ CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - ge
         // Reset daily counters at midnight
         cron.schedule('0 0 * * *', () => {
             this.dailyPostCount = 0;
-            this.lastPostTime = 0; // Reset timing controls
             console.log('🔄 Daily reset - Ready for new day of ultimate content');
         });
 
