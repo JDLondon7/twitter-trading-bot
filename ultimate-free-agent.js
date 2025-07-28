@@ -35,6 +35,7 @@ class UltimateFreeAgent {
         this.maxDailyPosts = 15; // Increased for threads
         this.lastPostTime = 0; // Track last post timestamp
         this.minPostInterval = 30 * 60 * 1000; // 30 minutes between posts
+        this.testMode = process.env.NODE_ENV === 'test' || process.env.TEST_MODE === 'true'; // Test mode flag
 
         // Enhanced database
         this.dbPath = path.join(__dirname, 'ultimate_free_agent.db');
@@ -663,10 +664,11 @@ TOPIC: ${topic}
 YOUR STYLE: Direct, professional, no-bullshit. Specific statistics and examples.
 
 THREAD REQUIREMENTS:
-- 8 tweets total
+- 8 tweets total, each EXACTLY under 280 characters
 - Tweet 1: Hook that makes people want to read more (include 🧵 and 1/8)
 - Tweets 2-7: Educational content with specific examples
 - Tweet 8: Call to action (follow for more insights)
+- CRITICAL: Each individual tweet must be under 280 characters - NO EXCEPTIONS
 
 CURRENT MARKET CONTEXT:
 ${Object.values(this.marketData).map(d => `${d.symbol}: ${d.changePercent}%`).join(', ')}
@@ -724,7 +726,8 @@ Return ONLY the 8 tweets, numbered 1/8 through 8/8, separated by "---"`;
                         strategy: strategy.type,
                         format: 'THREAD_OPENER',
                         isThread: true,
-                        threadId: Date.now()
+                        threadId: Date.now(),
+                        threadData: thread // Include full thread data
                     };
                 } else {
                     // Fallback to regular content
@@ -809,36 +812,19 @@ Return ONLY the 8 tweets, numbered 1/8 through 8/8, separated by "---"`;
         const response = await result.response;
         let content = response.text().trim().replace(/^["']|["']$/g, '');
         
-        // Improved character limit handling with better truncation
+        // NO TRUNCATION - content must be generated within limits
         if (content.length > 280) {
-            console.log(`⚠️ Content too long (${content.length} chars), intelligently truncating...`);
+            console.error(`❌ Content too long (${content.length} chars) - regenerating...`);
+            // Try one more time with stricter prompt
+            const strictPrompt = this.buildUltimatePrompt(strategy.type) + '\n\nCRITICAL: Response must be under 270 characters. Be concise.';
+            const retryResult = await this.geminiModel.generateContent(strictPrompt);
+            const retryResponse = await retryResult.response;
+            content = retryResponse.text().trim().replace(/^["']|["']$/g, '');
             
-            // Find last complete sentence within reasonable limit
-            const truncated = content.substring(0, 270);
-            let cutPoint = truncated.lastIndexOf('.');
-            
-            // If no sentence end, try other punctuation
-            if (cutPoint < 200) {
-                cutPoint = Math.max(
-                    truncated.lastIndexOf('!'),
-                    truncated.lastIndexOf('?'),
-                    truncated.lastIndexOf(':')
-                );
+            if (content.length > 280) {
+                console.error(`❌ Retry also too long (${content.length} chars) - using fallback`);
+                return this.getUltimateFallback();
             }
-            
-            // If still no good break, find last space
-            if (cutPoint < 200) {
-                cutPoint = truncated.lastIndexOf(' ');
-            }
-            
-            // Apply cut
-            if (cutPoint > 150) {
-                content = content.substring(0, cutPoint + 1);
-            } else {
-                content = content.substring(0, 270) + '...';
-            }
-            
-            console.log(`📏 Truncated to ${content.length} characters`);
         }
         
         return {
@@ -959,14 +945,14 @@ Use NQ and GC as separate market examples to illustrate your wisdom. The market 
 
 Be the mentor figure who shares hard-earned wisdom.
 
-CRITICAL: Keep response under 250 characters to ensure it fits within Twitter's 280 character limit after formatting.`;
+CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - generate content that naturally fits the limit.`;
 
             default:
                 return `${basePrompt}
 
 Create educational content focused on trading psychology and professional development. Use market context to support your teaching.
 
-CRITICAL: Keep response under 250 characters to ensure it fits within Twitter's 280 character limit after formatting.`;
+CRITICAL: Keep response EXACTLY under 280 characters. No truncation allowed - generate content that naturally fits the limit.`;
         }
     }
 
@@ -1086,12 +1072,26 @@ CRITICAL: Keep response under 250 characters to ensure it fits within Twitter's 
             // Critical Bug Fix: Validate content before posting
             const validatedContent = this.validateTweetContent(tweetData.content);
             
-            // Post to Twitter
-            const tweet = await this.twitter.v2.tweet({ text: validatedContent });
-            
-            // Update tweetData with validated content
-            tweetData.content = validatedContent;
-            await this.storeUltimateTweet(tweetData, tweet.data.id);
+            if (this.testMode) {
+                console.log(`🧪 TEST MODE - Would post: "${validatedContent}"`);
+                if (tweetData.isThread) {
+                    console.log(`🧵 Would continue with ${tweetData.threadData?.tweets?.length || 0} replies`);
+                }
+            } else {
+                // Post to Twitter
+                const tweet = await this.twitter.v2.tweet({ text: validatedContent });
+                console.log(`✅ Posted tweet ID: ${tweet.data.id}`);
+                
+                // If this is a thread, post the remaining tweets as replies
+                if (tweetData.isThread && tweetData.threadData?.tweets) {
+                    console.log(`🧵 Posting thread with ${tweetData.threadData.tweets.length} tweets...`);
+                    await this.postThreadReplies(tweet.data.id, tweetData.threadData.tweets.slice(1));
+                }
+                
+                // Update tweetData with validated content
+                tweetData.content = validatedContent;
+                await this.storeUltimateTweet(tweetData, tweet.data.id);
+            }
             
             this.dailyPostCount++;
             this.lastPostTime = Date.now(); // Update last post time
@@ -1099,6 +1099,40 @@ CRITICAL: Keep response under 250 characters to ensure it fits within Twitter's 
         } catch (error) {
             console.error('❌ Ultimate posting error:', error.message);
         }
+    }
+
+    // Post thread replies as proper Twitter thread
+    async postThreadReplies(originalTweetId, threadTweets) {
+        let previousTweetId = originalTweetId;
+        
+        for (let i = 0; i < threadTweets.length; i++) {
+            try {
+                const tweetContent = this.validateTweetContent(threadTweets[i]);
+                console.log(`🧵 Posting reply ${i + 2}/${threadTweets.length + 1}: "${tweetContent}"`);
+                
+                // Add delay between thread tweets to avoid rate limits
+                if (i > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+                
+                // Post as reply to previous tweet
+                const reply = await this.twitter.v2.tweet({
+                    text: tweetContent,
+                    reply: {
+                        in_reply_to_tweet_id: previousTweetId
+                    }
+                });
+                
+                console.log(`✅ Reply posted: ${reply.data.id}`);
+                previousTweetId = reply.data.id; // Next reply should reply to this tweet
+                
+            } catch (error) {
+                console.error(`❌ Error posting thread reply ${i + 2}:`, error.message);
+                break; // Stop posting further replies if one fails
+            }
+        }
+        
+        console.log(`🎉 Thread complete! Posted ${threadTweets.length + 1} tweets total`);
     }
 
     // Start the ultimate agent
@@ -1275,21 +1309,9 @@ CRITICAL: Keep response under 250 characters to ensure it fits within Twitter's 
             throw new Error('Invalid content: must be a non-empty string');
         }
         
-        // Twitter's limit is 280 characters - be more aggressive with truncation
+        // NO TRUNCATION - content should already be within limits
         if (content.length > 280) {
-            console.warn(`⚠️ Content too long (${content.length} chars), truncating...`);
-            // Find last complete sentence within limit
-            const truncated = content.substring(0, 270);
-            const lastSentence = truncated.lastIndexOf('.');
-            const lastSpace = truncated.lastIndexOf(' ');
-            
-            if (lastSentence > 200) {
-                return content.substring(0, lastSentence + 1);
-            } else if (lastSpace > 200) {
-                return content.substring(0, lastSpace) + '...';
-            } else {
-                return content.substring(0, 270) + '...';
-            }
+            throw new Error(`Content too long: ${content.length} characters. Must be regenerated, not truncated.`);
         }
         
         // Remove potential harmful characters
