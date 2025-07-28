@@ -1,0 +1,45 @@
+{
+  "name": "twitter-trading-agent",
+  "version": "1.0.0",
+  "description": "Automated Twitter agent for futures trading thought leadership content",
+  "main": "index.js",
+  "scripts": {
+    "start": "node -r dotenv/config index.js",
+    "dev": "nodemon -r dotenv/config index.js",
+    "test": "node -r dotenv/config test.js",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop twitter-trading-agent",
+    "pm2:restart": "pm2 restart twitter-trading-agent",
+    "pm2:logs": "pm2 logs twitter-trading-agent"
+  },
+  "keywords": [
+    "twitter",
+    "automation",
+    "trading",
+    "futures",
+    "social-media",
+    "bot",
+    "thought-leadership"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "twitter-api-v2": "^1.15.0",
+    "node-cron": "^3.0.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/twitter-trading-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/twitter-trading-agent/issues"
+  },
+  "homepage": "https://github.com/yourusername/twitter-trading-agent#readme"
+}

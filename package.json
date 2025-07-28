@@ -1,0 +1,22 @@
+{
+  "name": "twitter-trading-agent",
+  "version": "1.0.0",
+  "main": "ultimate-free-agent.js",
+  "scripts": {
+    "start": "node ultimate-free-agent.js",
+    "test": "node test-5-content-types.js"
+  },
+  "keywords": ["twitter", "trading", "ai", "futures"],
+  "author": "JBeckz007",
+  "license": "MIT",
+  "description": "AI-powered Twitter trading education bot focusing on NQ/GC futures psychology and education",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.57.0",
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.2.1",
+    "node-cron": "^4.2.1",
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.7",
+    "twitter-api-v2": "^1.24.0"
+  }
+}
